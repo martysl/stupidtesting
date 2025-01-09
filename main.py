@@ -1,35 +1,38 @@
-   from fastapi import FastAPI, HTTPException
-   from pydantic import BaseModel
-   from pytube import YouTube
-   import os
-   from moviepy.editor import AudioFileClip
+from flask import Flask, request, jsonify, send_file
+from pytube import YouTube
+import os
 
-   app = FastAPI()
+app = Flask(__name__)
 
-   class VideoRequest(BaseModel):
-       url: str
+DOWNLOAD_DIR = "/tmp"  # Dla Vercel, używamy /tmp do przechowywania plików tymczasowych
 
-   @app.post("/download")
-   async def download_video(request: VideoRequest):
-       video_url = request.url
+@app.route('/api/download', methods=['POST'])
+def download():
+    data = request.get_json()
+    url = data.get('url')
 
-       if not video_url:
-           raise HTTPException(status_code=400, detail="URL is required")
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
 
-       try:
-           yt = YouTube(video_url)
-           audio_stream = yt.streams.filter(only_audio=True).first()
-           
-           # Pobranie audio jako plik
-           audio_file = audio_stream.download(filename="temp_audio")
-           mp3_file = audio_file.replace(".webm", ".mp3")
-           audio_clip = AudioFileClip(audio_file)
-           audio_clip.write_audiofile(mp3_file)
-           audio_clip.close()
+    try:
+        yt = YouTube(url)
+        audio_stream = yt.streams.filter(only_audio=True).first()
+        output_path = os.path.join(DOWNLOAD_DIR, f"{yt.title}.mp3")
+        
+        # Pobranie pliku audio
+        audio_stream.download(DOWNLOAD_DIR, filename=f"{yt.title}.mp3")
 
-           # Usunięcie tymczasowego pliku
-           os.remove(audio_file)
+        return jsonify({"link": f"/api/file/{yt.title}.mp3"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-           return {"download_url": mp3_file}
-       except Exception as e:
-           raise HTTPException(status_code=400, detail=str(e))
+@app.route('/api/file/<filename>', methods=['GET'])
+def get_file(filename):
+    file_path = os.path.join(DOWNLOAD_DIR, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True)
+    else:
+        return jsonify({"error": "File not found"}), 404
+
+if __name__ == "__main__":
+    app.run()
