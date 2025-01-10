@@ -2,35 +2,40 @@ from flask import Flask, request, jsonify, send_file
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
 import os
-import tempfile
 
 app = Flask(__name__)
 
-def download_mp3(url):
-    yt = YouTube(url, on_progress_callback=on_progress)
-    print(yt.title)
+DOWNLOAD_DIR = "/tmp"  # Katalog tymczasowy dla Vercel
 
-    ys = yt.streams.get_audio_only()
-    filename = yt.title + '.mp3'
-    ys.download(filename=filename)
+@app.route('/api/download', methods=['POST'])
+def download():
+    data = request.get_json()
+    url = data.get('url')
 
-    return filename
-
-@app.route('/download', methods=['POST'])
-def download_video():
-    url = request.json.get('url')
     if not url:
-        return jsonify({'error': 'URL is required'}), 400
+        return jsonify({"error": "No URL provided"}), 400
 
-    filename = download_mp3(url)
-    return jsonify({
-        'message': 'File downloaded successfully!',
-        'url': f'/file/{filename}'
-    })
+    try:
+        yt = YouTube(url, on_progress_callback=on_progress)
+        audio_stream = yt.streams.get_audio_only()
 
-@app.route('/file/<filename>')
-def share_file(filename):
-    return send_file(filename, as_attachment=True)
+        # Ustawienie ścieżki do pliku
+        output_path = os.path.join(DOWNLOAD_DIR, f"{yt.title}.mp3")
 
-if __name__ == '__main__':
+        # Pobieranie audio
+        audio_stream.download(output_path=DOWNLOAD_DIR, filename=f"{yt.title}.mp3")
+
+        return jsonify({"link": f"/api/file/{yt.title}.mp3"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/file/<filename>', methods=['GET'])
+def get_file(filename):
+    file_path = os.path.join(DOWNLOAD_DIR, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True)
+    else:
+        return jsonify({"error": "File not found"}), 404
+
+if __name__ == "__main__":
     app.run(debug=True)
