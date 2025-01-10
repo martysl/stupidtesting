@@ -24,16 +24,29 @@ def download():
         stream = yt.streams.filter(only_audio=True).first()
         if stream is None:
             logging.error(f"No audio stream found for URL: {url}")
-            return jsonify({'error': 'No audio stream found'}), 404
+            return jsonify({
+                'error': 'No audio stream found',
+                'details': f'URL: {url}'
+            }), 404
         logging.debug(f"Audio stream found: {stream}")
         tmp_dir = tempfile.gettempdir()
         file_path = os.path.join(tmp_dir, 'audio.mp3')
-        stream.download(output_path=tmp_dir, filename='audio.mp3')
+        try:
+            stream.download(output_path=tmp_dir, filename='audio.mp3')
+        except Exception as e:
+            logging.error(f"Error downloading video: {e}")
+            return jsonify({
+                'error': 'Failed to download video',
+                'details': f'URL: {url}, Error: {str(e)}'
+            }), 500
         logging.debug(f"File downloaded to: {file_path}")
         return send_file(file_path, as_attachment=True, attachment_filename='audio.mp3')
     except Exception as e:
-        logging.error(f"Error downloading video: {e}")
-        return jsonify({'error': 'Failed to download video'}), 500
+        logging.error(f"Error: {e}")
+        return jsonify({
+            'error': 'An error occurred',
+            'details': f'Error: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
