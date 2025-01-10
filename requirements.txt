@@ -1,5 +1,2 @@
-fastapi
-uvicorn
-ytube-api
-moviepy
+pytubefix
 Flask
