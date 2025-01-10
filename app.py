@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, send_file
 from pytube import YouTube
 import logging
+import os
+import tempfile
 
 app = Flask(__name__)
 
@@ -24,7 +26,9 @@ def download():
             logging.error(f"No audio stream found for URL: {url}")
             return jsonify({'error': 'No audio stream found'}), 404
         logging.debug(f"Audio stream found: {stream}")
-        file_path = stream.download()
+        tmp_dir = tempfile.gettempdir()
+        file_path = os.path.join(tmp_dir, 'audio.mp3')
+        stream.download(output_path=tmp_dir, filename='audio.mp3')
         logging.debug(f"File downloaded to: {file_path}")
         return send_file(file_path, as_attachment=True, attachment_filename='audio.mp3')
     except Exception as e:
