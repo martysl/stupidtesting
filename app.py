@@ -13,7 +13,7 @@ filename = yt.title + '.mp3'
 ys.download(filename=filename)
 return filename
 # Route to download the MP3 file
-@app.route('/ytdl', methods=['POST'])
+@app.route('/download', methods=['POST'])
 def download_video():
 url = request.json.get('url')
 if not url:
