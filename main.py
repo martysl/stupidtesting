@@ -3,7 +3,7 @@ from pytube import YouTube
 
 app = Flask(__name__)
 
-@app.route('/download', methods=['POST'])
+@app.route('/ytdl', methods=['POST'])
 def download_mp3():
     data = request.json
     url = data.get('url')
