@@ -1,47 +1,28 @@
 from flask import Flask, request, jsonify, send_file
-from ytube_api import Ytube
-import logging
+from pytubefix import YouTube
+from pytubefix.cli import on_progress
 import os
 import tempfile
-
-# Create a new Flask app
 app = Flask(__name__)
-
-# Set up logging to debug level
-logging.basicConfig(level=logging.DEBUG)
-
-# Define the index route
-@app.route('/')
-def index():
-    # Return a simple HTML page with a message
-    return '<body style="background-color:black; color:white;"><h1>This API is private and made by AI</h1></body>'
-
-# Define the ytdl route
-@app.route('/ytdl', methods=['POST'])
+# Download the MP3 file
+def download_mp3(url):
+yt = YouTube(url, on_progress_callback=on_progress)
+print(yt.title)
+ys = yt.streams.get_audio_only()
+filename = yt.title + '.mp3'
+ys.download(filename=filename)
+return filename
+# Route to download the MP3 file
+@app.route('/download', methods=['POST'])
 def download_video():
-    # Get the URL from the request body
-    url = request.json.get('url')
-    
-    # Check if the URL is provided
-    if not url:
-        # Return an error response if the URL is not provided
-        return jsonify({'error': 'URL is required'}), 400
-    
-    # Create a new Ytube object
-    yt = Ytube()
-    
-    # Search for videos using the provided URL
-    search_results = yt.search_videos(url)
-    
-    # Get the first search result
-    target_video = search_results.items[0]
-    
-    # Get the download link for the target video
-    download_link = yt.get_download_link(target_video, format="mp3", quality="320")
-    
-    # Return the download link as a JSON response
-    return jsonify({'download_link': download_link.url})
-
-# Run the app in debug mode
+url = request.json.get('url')
+if not url:
+return jsonify({'error': 'URL is required'}), 400
+filename = download_mp3(url)
+return jsonify({'message': 'File downloaded successfully!', 'url': f'/file/{filename}'})
+# Route to share the MP3 file
+@app.route('/file/<filename>')
+def share_file(filename):
+return send_file(filename, as_attachment=True)
 if __name__ == '__main__':
-    app.run(debug=True)
+app.run(debug=True)
