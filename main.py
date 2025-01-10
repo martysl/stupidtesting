@@ -1,23 +1,20 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from pytube import YouTube
-
 app = Flask(__name__)
-
+@app.route('/')
+def index():
+return '<h1>This API is private and made by AI</h1>'
 @app.route('/ytdl', methods=['POST'])
-def download_mp3():
-    data = request.json
-    url = data.get('url')
-
-    if not url:
-        return jsonify({'error': 'URL is required'}), 400
-
-    try:
-        yt = YouTube(url)
-        stream = yt.streams.filter(only_audio=True).first()
-        link = stream.download()
-        return jsonify({'link': link})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+def download():
+url = request.json.get('url')
+if not url:
+return jsonify({'error': 'URL is required'}), 400
+try:
+yt = YouTube(url)
+stream = yt.streams.filter(only_audio=True).first()
+file_path = stream.download()
+return send_file(file_path, as_attachment=True, attachment_filename='audio.mp3')
+except Exception as e:
+return jsonify({'error': str(e)}), 500
 if __name__ == '__main__':
-    app.run(debug=True)
+app.run(debug=True)
